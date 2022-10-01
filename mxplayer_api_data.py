@@ -1,5 +1,6 @@
 import requests
 import json
+from bs4 import BeautifulSoup
 
 url = "https://api.mxplayer.in/v1/web/detail/browseItem?&pageNum=1&pageSize=20&isCustomized=true&browseLangFilterIds=te&type=1&device-density=2&userid=1a06465d-298e-4578-a26e-b471aa7b8fbc&platform=com.mxplay.desktop&content-languages=hi,en&kids-mode-enabled=false"
 # userid 1a06465d-298e-4578-a26e-b471aa7b8fbc
@@ -41,9 +42,23 @@ class Mxplayer_api_data:
                 item_title = item['title']
                 item_type = item['type']
                 item_url = item['webUrl']
-                total_url_data.append({"item_title":item_title,"item_type":item_type,"item_url":item_url})
-        return total_url_data
-
-
+                item_url_true = self.get_m3u8_file(item_url)
+                if item_url_true == None: continue
+                else:
+                    total_url_data.append({"item_title":item_title,"item_type":item_type,"item_url":item_url_true})
+            return total_url_data
+    def get_m3u8_file(self,item_url):
+        header={'User-Agent': 'Mozilla/5.0'}
+        url = f"https://www.mxplayer.in{item_url}?watch=true"
+        reqs = requests.get(url,headers=header)
+        soup = BeautifulSoup(reqs.content, 'html.parser')
+        script_data = soup.find_all('script')[0].text.strip() #collecting jsone data clearly here
+        json_data = json.loads(script_data)
+        if "isAccessibleForFree" in json_data[2]:
+            if json_data[2]['isAccessibleForFree'] == 'False':
+                return
+        else:
+            return json_data[3]["contentUrl"]
+        
 mxplayer_scraper = Mxplayer_api_data("1a06465d-298e-4578-a26e-b471aa7b8fbc")
-print(mxplayer_scraper.get_urls(0)[1]["item_url"]) # print what er we whant from the list
+print(mxplayer_scraper.get_urls(1)) # print what er we whant from the list
